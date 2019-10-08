@@ -1,0 +1,81 @@
+/*      Title Slide Display          */
+  slides > slide.title-slide{
+    background: rgb(255,255,255);
+    background: linear-gradient(0deg, rgba(255,255,255,1) 0%, rgba(212,212,212,1) 76%, rgba(41,41,41,0.9108018207282913) 100%);
+  }
+
+/*      Side display      */
+  /*    https://cssgradient.io/    */
+  
+  slides > slide {
+    background: rgb(255,255,255);
+    background: linear-gradient(0deg, rgba(255,255,255,1) 0%, rgba(184,184,184,1) 77%, rgba(0,0,0,1) 78%, rgba(0,0,0,1) 81%, rgba(255,255,255,1) 82%, rgba(255,255,255,1) 83%, rgba(0,0,0,1) 84%, rgba(0,0,0,1) 94%, rgba(255,255,255,1) 95%, rgba(255,255,255,1) 96%, rgba(0,0,0,1) 97%, rgba(0,0,0,1) 100%);
+  }
+
+slides > slide {
+  top: 0;
+  left: 0;
+  margin: 0;
+  width: 100vw;
+  height: 100vh;
+  font-family: 'Open Sans', Arial, sans-serif;
+  font-size: 26px;
+  color: black;
+}
+
+/*      Slide Title Font          */
+  
+  h2 {
+    color: #e2e2e2;
+      text-align: left;
+    font-size: 48px;
+    font-style: italic;
+    font-family: "arial";
+  }
+
+/*      Heading 3          */
+  
+  h3 {
+    color: black;
+    text-align: left;
+    font-size: 30px;
+    font-style: italic;
+    font-family: "arial";
+  }
+
+/*      Heading 4, 5, 6          */
+  
+  h4, h5, h6 {
+    color: black;
+    text-align: left;
+    font-size: 25px;
+    font-style: italic;
+    font-family: "arial";
+  }
+
+/*      graph width        */
+  
+  element.style {
+    width: 100%;
+  }
+
+/*      img settings         */
+  
+  img[Attributes Style] {
+    width: 500px;
+  }
+
+
+/*      QRemoving Background from Images       */
+  .question-img {
+    width: 50%;  
+    margin-right: 20px;
+    mix-blend-mode: multiply;
+  }
+  
+  .computer-img {
+    width: 50%;  
+    margin-right: 20px;
+    mix-blend-mode: multiply;
+  }
+

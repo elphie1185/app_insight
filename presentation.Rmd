@@ -1,0 +1,359 @@
+---
+title: "App Insights"
+author: "Delphine Rabiller"
+date: "01/10/2019"
+output:
+  ioslides_presentation:
+    css: my_theme.css
+  slidy_presentation:
+    css: my_theme.css
+  pdf_document: default
+  powerpoint_presentation: default
+  html_document:
+    css: my_theme.css
+---
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+library(tidyverse)
+library(lubridate)
+library(MASS)
+library(caret)
+```
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+account <-  read_delim("data/MDBUserAccounts_20190606.csv", 
+                     delim = "|", 
+                     escape_double = TRUE)
+
+logins <-  read_delim("data/MDBUserLogins_20190606.csv", 
+                      delim = "|", 
+                      escape_double = TRUE)
+
+users <-  read_delim("data/MDBUsers_20190606.csv", 
+                      delim = "|", 
+                      escape_double = TRUE)
+
+column_names_account <- c( "user_id", "account_id", "account_creation_date", 
+                           "account_type", "financial_institution", 
+                           "total_num_transactions")
+colnames(account) <- column_names_account
+
+account$account_creation_date <- dmy(account$account_creation_date)
+account$user_id <- as.character(account$user_id)
+account$account_id <- as.character(account$account_id)
+
+column_names_logins <- c("record_id", "user_id", "login_date")
+colnames(logins) <- column_names_logins
+logins$user_id <- as.character(logins$user_id)
+logins$login_date <- dmy(logins$login_date)
+
+column_names_users <- c("user_id", "gender", "age_range", "salary_range", 
+                        "registration_date")
+colnames(users) <- column_names_users
+
+users$registration_date <- dmy(users$registration_date)
+users$user_id <- as.character(users$user_id)
+
+```
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+my_theme <- function() {
+  theme_minimal() +
+    theme(
+      title = element_text(face = "bold", size = 16), 
+      axis.title = element_text(face = "bold", size = 13), 
+      panel.grid.major = element_line(colour = "grey82"), 
+      axis.text = element_text(size = 10, face = "bold"), 
+      axis.line = element_line(colour = "black", size = 0.5)
+    )
+}
+```
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+users_no_account <- users %>%
+  left_join(account, by = "user_id") %>%
+  filter(is.na(account_id)) 
+
+id_no_account <- unique(users_no_account$user_id)
+length(id_no_account)
+
+high_account_n <- users %>%
+  left_join(account, by = "user_id") %>%
+  filter(!is.na(account_id)) %>%
+  group_by(user_id) %>%
+  summarise(num_account = n()) %>%
+  filter(num_account >=19)
+```
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+real_account <- account %>%
+  filter(!(user_id %in% unique(high_account_n$user_id)))
+
+real_logins <-  logins %>%
+  filter(!(user_id %in% id_no_account), 
+         !(user_id %in% unique(high_account_n$user_id)))
+```
+
+
+## Project scope
+
+<br>
+
+### Does the type of account you add and when you add it indicate whether you are a long term user of the app?
+
+<br>
+
+* **3 datasets** : users, accounts and logins to provide
+- Insights on users of the app
+- Insight on financial institutions most and least used with the app
+- Insight on app use overtime
+
+## Considerations
+
+<br>
+
+*	**Ignore the salary range** (too many unknown)
+
+87% of users haven't included their salary range.
+
+*	**Set outliers for number of accounts**
+
+MDB support team creates a large number of accounts in order to troubleshoot user issues. These user id where removed from the analysis to avoid bias in the analysis.
+
+
+*	**Remove users without account** (as not using the app for the right purpose)
+
+Some users logged in the app without having an account. These users are likely users who closed accounts or users who signed up but didnt't add an account. These user_id were also removed from the analysis.
+
+<br>
+
+
+## Preliminary analysis... number of accounts 
+
+<div class="columns-2">
+
+
+<center>
+<br>
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, out.width='100%'}
+users %>%
+  left_join(account, by = "user_id") %>%
+  filter(!is.na(account_id)) %>%
+  group_by(user_id) %>%
+  summarise(num_account = n()) %>%
+  ggplot() +
+  aes(y = num_account) +
+  geom_boxplot(colour = "aquamarine3") +
+  coord_flip() +
+  labs(
+    title = "Number of Accounts per User", 
+    y = "Number of Accounts"
+  ) +
+  my_theme()
+```
+
+<br><br>
+</center>
+
+* Analysis in number of account showed:
+  + Minimum number of account held: 1
+  + Maximum number of accounts held: 249
+  + Mean number of accounts held: 4.77
+
+<br>
+
+### How to decide which are outliers?
+
+<br>
+
+</div>
+
+## Preliminary analysis... when are accounts opened?
+
+<div class="columns-2">
+
+<center>
+<br>
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, out.width='100%'}
+real_account %>%
+  dplyr::select(user_id, account_type, account_creation_date) %>%
+  filter(account_creation_date > "1900-01-02") %>%
+  left_join(dplyr::select(users, user_id, registration_date, gender, age_range), 
+            by = "user_id") %>%
+  mutate(date_difference = account_creation_date - registration_date) %>%
+  arrange(desc(date_difference)) %>%
+  filter(date_difference > 0) %>%
+  ggplot() +
+      geom_histogram(aes(x = date_difference, fill = gender), 
+                     alpha = 0.7, binwidth = 7) +
+  scale_fill_brewer(palette = "Set2") +
+  labs(
+    title = "When do users create account after registering", 
+    x = "Time range (days)", 
+    y = "Number of Users"
+  ) +
+  my_theme()
+```
+
+<br>
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, out.width='100%'}
+real_account %>%
+  dplyr::select(user_id, account_type, account_creation_date) %>%
+  filter(account_creation_date > "1900-01-02") %>%
+  left_join(dplyr::select(users, user_id, registration_date, gender, age_range), 
+            by = "user_id") %>%
+  mutate(date_difference = account_creation_date - registration_date) %>%
+  arrange(desc(date_difference)) %>%
+  filter(date_difference > 0) %>%
+  ggplot() +
+      geom_histogram(aes(x = date_difference, fill = gender), 
+                     alpha = 0.7, binwidth = 7) +
+  coord_cartesian(xlim = c(0, 63)) +
+  scale_fill_brewer(palette = "Set2") +
+  labs(
+    title = "When do users create account after registering", 
+    x = "Time range (days)", 
+    y = "Number of Users"
+  ) +
+  my_theme()
+```
+
+</centre>
+</div>
+
+## Further analysis
+
+<center>
+<br><br>
+
+### Now let's see in more details who these users are? ... 
+
+
+</centre>
+
+
+## Can we make predictions? 
+
+<div class="columns-2">
+
+
+<br>
+
+### Trying an automated model
+
+<center>
+
+<img class="computer-img" src="./images/computer_crash.jpg" />
+
+</centre>
+
+<br><br><br>
+
+### Trying the manual approach
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, out.width='100%'}
+user_month <- users %>%
+  dplyr::select(-salary_range) %>%
+  mutate(year_registered = year(registration_date), 
+         month_registered = month(registration_date)) %>%
+  dplyr::select(-registration_date)
+
+account_user <- real_account %>%
+  dplyr::select(-c(account_id, financial_institution)) %>%
+  filter(account_creation_date > "1901-01-01") %>%
+  mutate(year_created = year(account_creation_date),
+         month_created = month(account_creation_date)) %>%
+  group_by(user_id) %>%
+  mutate(
+    num_account = n(), 
+    num_transaction = sum(total_num_transactions)
+  ) %>%
+  arrange(account_creation_date) %>%
+  slice(1) %>% 
+  dplyr::select(-c(account_creation_date, total_num_transactions)) %>%
+  left_join(user_month)
+
+
+login_user <- real_logins %>%
+  dplyr::select(-record_id) %>%
+  group_by(user_id) %>%
+  summarise(total_logs = n()) %>%
+  left_join(user_month)
+
+model_data <- account_user %>%
+  full_join(login_user) 
+
+
+model_data$total_logs <-  replace(model_data$total_logs, 
+                                  is.na(model_data$total_logs), 0)
+
+model_data_no_id <- model_data %>% 
+  dplyr::select(-user_id)
+train_index <- createDataPartition(model_data_no_id$total_logs, 
+                                   p = 0.8, list = FALSE, times = 1)
+
+train <- model_data_no_id[train_index, ]
+test <- model_data_no_id[-train_index,]
+
+fit7 <- glm.nb(total_logs ~ num_account + year_created + num_transaction +
+                  age_range + month_created + gender + account_type, train)
+
+predictions <- predict(fit7, newdata = test, type = "response")
+
+test$predictions <- predictions
+ggplot(test) +
+  aes(x = total_logs, y = predictions) +
+  geom_point(colour = "aquamarine3") +
+  labs(
+    title = "How well does the model work?", 
+    x = "Actual number of logs",
+    y = "Predicted number of logs"
+  ) +
+  my_theme()
+
+```
+
+
+</center>
+
+Apparently not very well
+
+</div>
+
+
+## Conclusion
+
+<br>
+
+* Accounts are created very shortly after the users register.
+
+* User behaviour follows the same trend for all gender with: 
+  + number of accounts increasing with age up to the age of 64
+  + number of logins increasing with age up to the age of 64
+  + number of transactions peaks at 40-49
+  
+* Activity of some financial institutions shows a sharp decline (Natwest Bank, Lloyds)
+
+* Users log shortly after registering or creating an account.
+
+* No model could be made to predict the log pattern of users.
+
+* Some things went well, some a lot less !
+
+## Questions ??
+
+<br>
+
+<center>
+
+<img class="question-img" src="./images/question_mark.jpg" />
+
+</center>
+
+
+
